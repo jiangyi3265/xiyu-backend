@@ -2,6 +2,7 @@ package com.ruoyi.web.app.service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.net.URLEncoder;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
@@ -117,26 +118,41 @@ public class AppBizService
     /** 用 code 换取 openid；真实模式调微信接口，演示模式返回固定 openid */
     private String resolveOpenid(String code)
     {
-        if (StringUtils.isNotEmpty(wxAppid) && StringUtils.isNotEmpty(wxSecret) && StringUtils.isNotEmpty(code))
+        if (StringUtils.isEmpty(code))
         {
-            try
-            {
-                String url = "https://api.weixin.qq.com/sns/jscode2session?appid=" + wxAppid
-                        + "&secret=" + wxSecret + "&js_code=" + code + "&grant_type=authorization_code";
-                String resp = HttpUtils.sendGet(url);
-                String openid = extractJson(resp, "openid");
-                if (StringUtils.isNotEmpty(openid))
-                {
-                    return openid;
-                }
-            }
-            catch (Exception e)
-            {
-                // 真实调用失败时回落演示模式，保证登录不中断
-            }
+            throw new ServiceException("缺少微信登录 code");
         }
-        // 演示兜底：固定 openid，开发者工具/未配置 appid 时统一登录到同一微信演示会员
-        return "wx_demo_openid";
+        if (StringUtils.isEmpty(wxAppid) || StringUtils.isEmpty(wxSecret))
+        {
+            // 演示兜底：固定 openid，开发者工具/未配置 appid 时统一登录到同一微信演示会员
+            return "wx_demo_openid";
+        }
+        try
+        {
+            String url = "https://api.weixin.qq.com/sns/jscode2session?appid=" + URLEncoder.encode(wxAppid, "UTF-8")
+                    + "&secret=" + URLEncoder.encode(wxSecret, "UTF-8")
+                    + "&js_code=" + URLEncoder.encode(code, "UTF-8") + "&grant_type=authorization_code";
+            String resp = HttpUtils.sendGet(url);
+            String openid = extractJson(resp, "openid");
+            if (StringUtils.isNotEmpty(openid))
+            {
+                return openid;
+            }
+            String errmsg = extractJson(resp, "errmsg");
+            if (StringUtils.isNotEmpty(errmsg))
+            {
+                throw new ServiceException("微信登录失败：" + errmsg);
+            }
+            throw new ServiceException("微信登录失败：微信接口未返回 openid");
+        }
+        catch (ServiceException e)
+        {
+            throw e;
+        }
+        catch (Exception e)
+        {
+            throw new ServiceException("微信登录失败，请稍后重试");
+        }
     }
 
     /** 极简 JSON 取值（避免额外引入解析库；仅用于解析微信返回） */
