@@ -19,38 +19,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up JDK
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "8"
-          cache: maven
-
-      - name: Build jar
-        run: mvn -B -DskipTests clean package
-
-      - name: Upload jar
-        env:
-          SERVER_HOST: ${{ secrets.SERVER_HOST }}
-          SERVER_USER: ${{ secrets.SERVER_USER || 'root' }}
-          SERVER_PASSWORD: ${{ secrets.SERVER_PASSWORD }}
-          SSH_PORT: ${{ secrets.SSH_PORT || 22 }}
-        run: |
-          set -eu
-          sudo apt-get update
-          sudo apt-get install -y sshpass
-          mkdir -p ~/.ssh
-          ssh-keyscan -p "$SSH_PORT" "$SERVER_HOST" >> ~/.ssh/known_hosts
-          sshpass -p "$SERVER_PASSWORD" ssh -p "$SSH_PORT" "$SERVER_USER@$SERVER_HOST" "rm -rf /tmp/xiyu-backend && mkdir -p /tmp/xiyu-backend"
-          sshpass -p "$SERVER_PASSWORD" scp -P "$SSH_PORT" ruoyi-admin/target/ruoyi-admin.jar "$SERVER_USER@$SERVER_HOST:/tmp/xiyu-backend/ruoyi-admin.jar"
-
-      - name: Restart backend service
+      - name: Build and restart backend on server
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER || 'root' }}
           password: ${{ secrets.SERVER_PASSWORD }}
           port: ${{ secrets.SSH_PORT || 22 }}
+          command_timeout: 30m
           script: |
             set -eu
 
@@ -58,10 +34,19 @@ jobs:
             APP_DIR="/opt/xiyu/backend"
             LOG_DIR="/opt/xiyu/logs"
             UPLOAD_DIR="/opt/xiyu/uploadPath"
+            BUILD_DIR="/tmp/xiyu-backend-src"
             JAR_PATH="$APP_DIR/ruoyi-admin.jar"
+            REPO_URL="https://github.com/jiangyi3265/xiyu-backend.git"
+            COMMIT_SHA="${{ github.sha }}"
 
             mkdir -p "$APP_DIR" "$LOG_DIR" "$UPLOAD_DIR"
-            install -m 0644 /tmp/xiyu-backend/ruoyi-admin.jar "$JAR_PATH"
+            rm -rf "$BUILD_DIR"
+            git clone --depth 1 "$REPO_URL" "$BUILD_DIR"
+            cd "$BUILD_DIR"
+            git fetch --depth 1 origin "$COMMIT_SHA"
+            git checkout "$COMMIT_SHA"
+            mvn -B -DskipTests clean package
+            install -m 0644 "$BUILD_DIR/ruoyi-admin/target/ruoyi-admin.jar" "$JAR_PATH"
 
             JAVA_BIN="$(command -v java || true)"
             if [ -z "$JAVA_BIN" ]; then
