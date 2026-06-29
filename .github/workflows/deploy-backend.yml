@@ -41,9 +41,21 @@ jobs:
 
             mkdir -p "$APP_DIR" "$LOG_DIR" "$UPLOAD_DIR"
             rm -rf "$BUILD_DIR"
-            git clone --depth 1 "$REPO_URL" "$BUILD_DIR"
+            for i in $(seq 1 5); do
+              if git clone --depth 1 "$REPO_URL" "$BUILD_DIR"; then
+                break
+              fi
+              rm -rf "$BUILD_DIR"
+              sleep $((i * 5))
+            done
+            test -d "$BUILD_DIR/.git"
             cd "$BUILD_DIR"
-            git fetch --depth 1 origin "$COMMIT_SHA"
+            for i in $(seq 1 5); do
+              if git fetch --depth 1 origin "$COMMIT_SHA"; then
+                break
+              fi
+              sleep $((i * 5))
+            done
             git checkout "$COMMIT_SHA"
             mvn -B -DskipTests clean package
             install -m 0644 "$BUILD_DIR/ruoyi-admin/target/ruoyi-admin.jar" "$JAR_PATH"
