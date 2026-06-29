@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.hotel.mapper.LwfOrderMapper">
+
+    <resultMap type="LwfOrder" id="LwfOrderResult">
+        <result property="orderId"     column="order_id"     />
+        <result property="orderNo"     column="order_no"     />
+        <result property="memberId"    column="member_id"    />
+        <result property="memberName"  column="member_name"  />
+        <result property="shop"        column="shop"         />
+        <result property="kind"        column="kind"         />
+        <result property="scene"       column="scene"        />
+        <result property="status"      column="status"       />
+        <result property="tagText"     column="tag_text"     />
+        <result property="title"       column="title"        />
+        <result property="unitPrice"   column="unit_price"   />
+        <result property="qty"         column="qty"          />
+        <result property="amount"      column="amount"       />
+        <result property="payAmount"   column="pay_amount"   />
+        <result property="couponMcId"  column="coupon_mc_id" />
+        <result property="usedPoints"  column="used_points"  />
+        <result property="refId"       column="ref_id"       />
+        <result property="checkIn"     column="check_in"     />
+        <result property="checkOut"    column="check_out"    />
+        <result property="reviewed"    column="reviewed"     />
+        <result property="createBy"    column="create_by"    />
+        <result property="createTime"  column="create_time"  />
+        <result property="updateBy"    column="update_by"    />
+        <result property="updateTime"  column="update_time"  />
+        <result property="remark"      column="remark"       />
+    </resultMap>
+
+    <sql id="selectLwfOrderVo">
+        select order_id, order_no, member_id, member_name, shop, kind, scene, status, tag_text, title, unit_price, qty, amount, pay_amount, coupon_mc_id, used_points, ref_id, check_in, check_out, reviewed, create_by, create_time, update_by, update_time, remark from lwf_order
+    </sql>
+
+    <select id="selectLwfOrderList" parameterType="LwfOrder" resultMap="LwfOrderResult">
+        <include refid="selectLwfOrderVo"/>
+        <where>
+            <if test="orderNo != null and orderNo != ''"> and order_no like concat('%', #{orderNo}, '%')</if>
+            <if test="memberId != null"> and member_id = #{memberId}</if>
+            <if test="memberName != null and memberName != ''"> and member_name like concat('%', #{memberName}, '%')</if>
+            <if test="kind != null and kind != ''"> and kind = #{kind}</if>
+            <if test="status != null and status != ''"> and status = #{status}</if>
+            <if test="title != null and title != ''"> and title like concat('%', #{title}, '%')</if>
+        </where>
+        order by order_id desc
+    </select>
+
+    <select id="selectLwfOrderByOrderId" parameterType="Long" resultMap="LwfOrderResult">
+        <include refid="selectLwfOrderVo"/>
+        where order_id = #{orderId}
+    </select>
+
+    <insert id="insertLwfOrder" parameterType="LwfOrder" useGeneratedKeys="true" keyProperty="orderId">
+        insert into lwf_order
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="orderNo != null and orderNo != ''">order_no,</if>
+            <if test="memberId != null">member_id,</if>
+            <if test="memberName != null">member_name,</if>
+            <if test="shop != null">shop,</if>
+            <if test="kind != null">kind,</if>
+            <if test="scene != null">scene,</if>
+            <if test="status != null">status,</if>
+            <if test="tagText != null">tag_text,</if>
+            <if test="title != null and title != ''">title,</if>
+            <if test="unitPrice != null">unit_price,</if>
+            <if test="qty != null">qty,</if>
+            <if test="amount != null">amount,</if>
+            <if test="payAmount != null">pay_amount,</if>
+            <if test="couponMcId != null">coupon_mc_id,</if>
+            <if test="usedPoints != null">used_points,</if>
+            <if test="refId != null">ref_id,</if>
+            <if test="checkIn != null">check_in,</if>
+            <if test="checkOut != null">check_out,</if>
+            <if test="remark != null">remark,</if>
+            <if test="createBy != null">create_by,</if>
+            create_time
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="orderNo != null and orderNo != ''">#{orderNo},</if>
+            <if test="memberId != null">#{memberId},</if>
+            <if test="memberName != null">#{memberName},</if>
+            <if test="shop != null">#{shop},</if>
+            <if test="kind != null">#{kind},</if>
+            <if test="scene != null">#{scene},</if>
+            <if test="status != null">#{status},</if>
+            <if test="tagText != null">#{tagText},</if>
+            <if test="title != null and title != ''">#{title},</if>
+            <if test="unitPrice != null">#{unitPrice},</if>
+            <if test="qty != null">#{qty},</if>
+            <if test="amount != null">#{amount},</if>
+            <if test="payAmount != null">#{payAmount},</if>
+            <if test="couponMcId != null">#{couponMcId},</if>
+            <if test="usedPoints != null">#{usedPoints},</if>
+            <if test="refId != null">#{refId},</if>
+            <if test="checkIn != null">#{checkIn},</if>
+            <if test="checkOut != null">#{checkOut},</if>
+            <if test="remark != null">#{remark},</if>
+            <if test="createBy != null">#{createBy},</if>
+            sysdate()
+        </trim>
+    </insert>
+
+    <update id="updateLwfOrder" parameterType="LwfOrder">
+        update lwf_order
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="orderNo != null and orderNo != ''">order_no = #{orderNo},</if>
+            <if test="memberId != null">member_id = #{memberId},</if>
+            <if test="memberName != null">member_name = #{memberName},</if>
+            <if test="shop != null">shop = #{shop},</if>
+            <if test="kind != null">kind = #{kind},</if>
+            <if test="scene != null">scene = #{scene},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="tagText != null">tag_text = #{tagText},</if>
+            <if test="title != null and title != ''">title = #{title},</if>
+            <if test="unitPrice != null">unit_price = #{unitPrice},</if>
+            <if test="qty != null">qty = #{qty},</if>
+            <if test="amount != null">amount = #{amount},</if>
+            <if test="payAmount != null">pay_amount = #{payAmount},</if>
+            <if test="reviewed != null">reviewed = #{reviewed},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = sysdate()
+        </trim>
+        where order_id = #{orderId}
+    </update>
+
+    <delete id="deleteLwfOrderByOrderId" parameterType="Long">
+        delete from lwf_order where order_id = #{orderId}
+    </delete>
+
+    <delete id="deleteLwfOrderByOrderIds" parameterType="String">
+        delete from lwf_order where order_id in
+        <foreach item="orderId" collection="array" open="(" separator="," close=")">
+            #{orderId}
+        </foreach>
+    </delete>
+</mapper>

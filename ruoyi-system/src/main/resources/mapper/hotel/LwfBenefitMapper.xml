@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.hotel.mapper.LwfBenefitMapper">
+
+    <resultMap type="LwfBenefit" id="LwfBenefitResult">
+        <result property="benefitId"   column="benefit_id"   />
+        <result property="name"        column="name"         />
+        <result property="val"         column="val"          />
+        <result property="icon"        column="icon"         />
+        <result property="sort"        column="sort"         />
+        <result property="status"      column="status"       />
+        <result property="createBy"    column="create_by"    />
+        <result property="createTime"  column="create_time"  />
+        <result property="updateBy"    column="update_by"    />
+        <result property="updateTime"  column="update_time"  />
+        <result property="remark"      column="remark"       />
+    </resultMap>
+
+    <sql id="selectLwfBenefitVo">
+        select benefit_id, name, val, icon, sort, status, create_by, create_time, update_by, update_time, remark from lwf_benefit
+    </sql>
+
+    <select id="selectLwfBenefitList" parameterType="LwfBenefit" resultMap="LwfBenefitResult">
+        <include refid="selectLwfBenefitVo"/>
+        <where>
+            <if test="name != null and name != ''"> and name like concat('%', #{name}, '%')</if>
+            <if test="status != null and status != ''"> and status = #{status}</if>
+        </where>
+        order by sort asc, benefit_id asc
+    </select>
+
+    <select id="selectLwfBenefitByBenefitId" parameterType="Long" resultMap="LwfBenefitResult">
+        <include refid="selectLwfBenefitVo"/>
+        where benefit_id = #{benefitId}
+    </select>
+
+    <insert id="insertLwfBenefit" parameterType="LwfBenefit" useGeneratedKeys="true" keyProperty="benefitId">
+        insert into lwf_benefit
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="name != null and name != ''">name,</if>
+            <if test="val != null">val,</if>
+            <if test="icon != null">icon,</if>
+            <if test="sort != null">sort,</if>
+            <if test="status != null">status,</if>
+            <if test="remark != null">remark,</if>
+            <if test="createBy != null">create_by,</if>
+            create_time
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="name != null and name != ''">#{name},</if>
+            <if test="val != null">#{val},</if>
+            <if test="icon != null">#{icon},</if>
+            <if test="sort != null">#{sort},</if>
+            <if test="status != null">#{status},</if>
+            <if test="remark != null">#{remark},</if>
+            <if test="createBy != null">#{createBy},</if>
+            sysdate()
+        </trim>
+    </insert>
+
+    <update id="updateLwfBenefit" parameterType="LwfBenefit">
+        update lwf_benefit
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="name != null and name != ''">name = #{name},</if>
+            <if test="val != null">val = #{val},</if>
+            <if test="icon != null">icon = #{icon},</if>
+            <if test="sort != null">sort = #{sort},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = sysdate()
+        </trim>
+        where benefit_id = #{benefitId}
+    </update>
+
+    <delete id="deleteLwfBenefitByBenefitId" parameterType="Long">
+        delete from lwf_benefit where benefit_id = #{benefitId}
+    </delete>
+
+    <delete id="deleteLwfBenefitByBenefitIds" parameterType="String">
+        delete from lwf_benefit where benefit_id in
+        <foreach item="benefitId" collection="array" open="(" separator="," close=")">
+            #{benefitId}
+        </foreach>
+    </delete>
+</mapper>

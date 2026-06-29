@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.hotel.mapper.LwfRechargeMapper">
+
+    <resultMap type="LwfRecharge" id="LwfRechargeResult">
+        <result property="rechargeId"  column="recharge_id"  />
+        <result property="title"       column="title"        />
+        <result property="amount"      column="amount"       />
+        <result property="give"        column="give"         />
+        <result property="coupon"      column="coupon"       />
+        <result property="hours"       column="hours"        />
+        <result property="hot"         column="hot"          />
+        <result property="giftName"    column="gift_name"    />
+        <result property="giftPrice"   column="gift_price"   />
+        <result property="giftQty"     column="gift_qty"     />
+        <result property="giftValid"   column="gift_valid"   />
+        <result property="sort"        column="sort"         />
+        <result property="status"      column="status"       />
+        <result property="createBy"    column="create_by"    />
+        <result property="createTime"  column="create_time"  />
+        <result property="updateBy"    column="update_by"    />
+        <result property="updateTime"  column="update_time"  />
+        <result property="remark"      column="remark"       />
+    </resultMap>
+
+    <sql id="selectLwfRechargeVo">
+        select recharge_id, title, amount, give, coupon, hours, hot, gift_name, gift_price, gift_qty, gift_valid, sort, status, create_by, create_time, update_by, update_time, remark from lwf_recharge
+    </sql>
+
+    <select id="selectLwfRechargeList" parameterType="LwfRecharge" resultMap="LwfRechargeResult">
+        <include refid="selectLwfRechargeVo"/>
+        <where>
+            <if test="title != null and title != ''"> and title like concat('%', #{title}, '%')</if>
+            <if test="status != null and status != ''"> and status = #{status}</if>
+        </where>
+        order by sort asc, recharge_id asc
+    </select>
+
+    <select id="selectLwfRechargeByRechargeId" parameterType="Long" resultMap="LwfRechargeResult">
+        <include refid="selectLwfRechargeVo"/>
+        where recharge_id = #{rechargeId}
+    </select>
+
+    <insert id="insertLwfRecharge" parameterType="LwfRecharge" useGeneratedKeys="true" keyProperty="rechargeId">
+        insert into lwf_recharge
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="title != null and title != ''">title,</if>
+            <if test="amount != null">amount,</if>
+            <if test="give != null">give,</if>
+            <if test="coupon != null">coupon,</if>
+            <if test="hours != null">hours,</if>
+            <if test="hot != null">hot,</if>
+            <if test="giftName != null">gift_name,</if>
+            <if test="giftPrice != null">gift_price,</if>
+            <if test="giftQty != null">gift_qty,</if>
+            <if test="giftValid != null">gift_valid,</if>
+            <if test="sort != null">sort,</if>
+            <if test="status != null">status,</if>
+            <if test="remark != null">remark,</if>
+            <if test="createBy != null">create_by,</if>
+            create_time
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="title != null and title != ''">#{title},</if>
+            <if test="amount != null">#{amount},</if>
+            <if test="give != null">#{give},</if>
+            <if test="coupon != null">#{coupon},</if>
+            <if test="hours != null">#{hours},</if>
+            <if test="hot != null">#{hot},</if>
+            <if test="giftName != null">#{giftName},</if>
+            <if test="giftPrice != null">#{giftPrice},</if>
+            <if test="giftQty != null">#{giftQty},</if>
+            <if test="giftValid != null">#{giftValid},</if>
+            <if test="sort != null">#{sort},</if>
+            <if test="status != null">#{status},</if>
+            <if test="remark != null">#{remark},</if>
+            <if test="createBy != null">#{createBy},</if>
+            sysdate()
+        </trim>
+    </insert>
+
+    <update id="updateLwfRecharge" parameterType="LwfRecharge">
+        update lwf_recharge
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="title != null and title != ''">title = #{title},</if>
+            <if test="amount != null">amount = #{amount},</if>
+            <if test="give != null">give = #{give},</if>
+            <if test="coupon != null">coupon = #{coupon},</if>
+            <if test="hours != null">hours = #{hours},</if>
+            <if test="hot != null">hot = #{hot},</if>
+            <if test="giftName != null">gift_name = #{giftName},</if>
+            <if test="giftPrice != null">gift_price = #{giftPrice},</if>
+            <if test="giftQty != null">gift_qty = #{giftQty},</if>
+            <if test="giftValid != null">gift_valid = #{giftValid},</if>
+            <if test="sort != null">sort = #{sort},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = sysdate()
+        </trim>
+        where recharge_id = #{rechargeId}
+    </update>
+
+    <delete id="deleteLwfRechargeByRechargeId" parameterType="Long">
+        delete from lwf_recharge where recharge_id = #{rechargeId}
+    </delete>
+
+    <delete id="deleteLwfRechargeByRechargeIds" parameterType="String">
+        delete from lwf_recharge where recharge_id in
+        <foreach item="rechargeId" collection="array" open="(" separator="," close=")">
+            #{rechargeId}
+        </foreach>
+    </delete>
+</mapper>

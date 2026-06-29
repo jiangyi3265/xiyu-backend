@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.hotel.mapper.LwfMallMapper">
+
+    <resultMap type="LwfMall" id="LwfMallResult">
+        <result property="mallId"      column="mall_id"      />
+        <result property="title"       column="title"        />
+        <result property="cat"         column="cat"          />
+        <result property="scene"       column="scene"        />
+        <result property="points"      column="points"       />
+        <result property="sort"        column="sort"         />
+        <result property="status"      column="status"       />
+        <result property="createBy"    column="create_by"    />
+        <result property="createTime"  column="create_time"  />
+        <result property="updateBy"    column="update_by"    />
+        <result property="updateTime"  column="update_time"  />
+        <result property="remark"      column="remark"       />
+    </resultMap>
+
+    <sql id="selectLwfMallVo">
+        select mall_id, title, cat, scene, points, sort, status, create_by, create_time, update_by, update_time, remark from lwf_mall
+    </sql>
+
+    <select id="selectLwfMallList" parameterType="LwfMall" resultMap="LwfMallResult">
+        <include refid="selectLwfMallVo"/>
+        <where>
+            <if test="title != null and title != ''"> and title like concat('%', #{title}, '%')</if>
+            <if test="cat != null"> and cat = #{cat}</if>
+            <if test="status != null and status != ''"> and status = #{status}</if>
+        </where>
+        order by sort asc, mall_id asc
+    </select>
+
+    <select id="selectLwfMallByMallId" parameterType="Long" resultMap="LwfMallResult">
+        <include refid="selectLwfMallVo"/>
+        where mall_id = #{mallId}
+    </select>
+
+    <insert id="insertLwfMall" parameterType="LwfMall" useGeneratedKeys="true" keyProperty="mallId">
+        insert into lwf_mall
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="title != null and title != ''">title,</if>
+            <if test="cat != null">cat,</if>
+            <if test="scene != null">scene,</if>
+            <if test="points != null">points,</if>
+            <if test="sort != null">sort,</if>
+            <if test="status != null">status,</if>
+            <if test="remark != null">remark,</if>
+            <if test="createBy != null">create_by,</if>
+            create_time
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="title != null and title != ''">#{title},</if>
+            <if test="cat != null">#{cat},</if>
+            <if test="scene != null">#{scene},</if>
+            <if test="points != null">#{points},</if>
+            <if test="sort != null">#{sort},</if>
+            <if test="status != null">#{status},</if>
+            <if test="remark != null">#{remark},</if>
+            <if test="createBy != null">#{createBy},</if>
+            sysdate()
+        </trim>
+    </insert>
+
+    <update id="updateLwfMall" parameterType="LwfMall">
+        update lwf_mall
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="title != null and title != ''">title = #{title},</if>
+            <if test="cat != null">cat = #{cat},</if>
+            <if test="scene != null">scene = #{scene},</if>
+            <if test="points != null">points = #{points},</if>
+            <if test="sort != null">sort = #{sort},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = sysdate()
+        </trim>
+        where mall_id = #{mallId}
+    </update>
+
+    <delete id="deleteLwfMallByMallId" parameterType="Long">
+        delete from lwf_mall where mall_id = #{mallId}
+    </delete>
+
+    <delete id="deleteLwfMallByMallIds" parameterType="String">
+        delete from lwf_mall where mall_id in
+        <foreach item="mallId" collection="array" open="(" separator="," close=")">
+            #{mallId}
+        </foreach>
+    </delete>
+</mapper>

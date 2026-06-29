@@ -1,0 +1,110 @@
+name: Deploy backend service
+
+on:
+  push:
+    branches:
+      - master
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-backend
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "8"
+          cache: maven
+
+      - name: Build jar
+        run: mvn -B -DskipTests clean package
+
+      - name: Upload jar
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER || 'root' }}
+          password: ${{ secrets.SERVER_PASSWORD }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          source: ruoyi-admin/target/ruoyi-admin.jar
+          target: /tmp/xiyu-backend
+          strip_components: 2
+          rm: true
+
+      - name: Restart backend service
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER || 'root' }}
+          password: ${{ secrets.SERVER_PASSWORD }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          script: |
+            set -eu
+
+            SERVICE_NAME="xiyu-backend"
+            APP_DIR="/opt/xiyu/backend"
+            LOG_DIR="/opt/xiyu/logs"
+            UPLOAD_DIR="/opt/xiyu/uploadPath"
+            JAR_PATH="$APP_DIR/ruoyi-admin.jar"
+
+            mkdir -p "$APP_DIR" "$LOG_DIR" "$UPLOAD_DIR"
+            install -m 0644 /tmp/xiyu-backend/ruoyi-admin.jar "$JAR_PATH"
+
+            JAVA_BIN="$(command -v java || true)"
+            if [ -z "$JAVA_BIN" ]; then
+              echo "java was not found on the server"
+              exit 1
+            fi
+
+            cat > "$APP_DIR/$SERVICE_NAME.env.new" <<'ENVEOF'
+            DB_URL=${{ secrets.DB_URL }}
+            DB_USERNAME=${{ secrets.DB_USERNAME }}
+            DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+            REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}
+            RUOYI_TOKEN_SECRET=${{ secrets.RUOYI_TOKEN_SECRET }}
+            WX_APPID=${{ secrets.WX_APPID }}
+            WX_SECRET=${{ secrets.WX_SECRET }}
+            WX_MCH_ID=${{ secrets.WX_MCH_ID }}
+            WX_API_KEY=${{ secrets.WX_API_KEY }}
+            WX_NOTIFY_URL=${{ secrets.WX_NOTIFY_URL }}
+            WX_CERT_PATH=${{ secrets.WX_CERT_PATH }}
+            ENVEOF
+            awk -F= 'index($0, "=") && length(substr($0, index($0, "=") + 1)) > 0 { print }' "$APP_DIR/$SERVICE_NAME.env.new" > "$APP_DIR/$SERVICE_NAME.env"
+            rm -f "$APP_DIR/$SERVICE_NAME.env.new"
+            chmod 600 "$APP_DIR/$SERVICE_NAME.env"
+
+            cat > "/etc/systemd/system/$SERVICE_NAME.service" <<SERVICEEOF
+            [Unit]
+            Description=Xiyu Backend Service
+            After=network.target
+
+            [Service]
+            Type=simple
+            WorkingDirectory=$APP_DIR
+            Environment=RUOYI_PROFILE=$UPLOAD_DIR
+            EnvironmentFile=-$APP_DIR/$SERVICE_NAME.env
+            ExecStart=$JAVA_BIN -jar $JAR_PATH --server.port=8081 --spring.profiles.active=druid
+            Restart=always
+            RestartSec=5
+            User=root
+
+            [Install]
+            WantedBy=multi-user.target
+            SERVICEEOF
+
+            systemctl daemon-reload
+            systemctl enable "$SERVICE_NAME"
+            systemctl restart "$SERVICE_NAME"
+            sleep 8
+            systemctl --no-pager --full status "$SERVICE_NAME"
+            curl -fsS --max-time 10 http://127.0.0.1:8081/app/home >/dev/null

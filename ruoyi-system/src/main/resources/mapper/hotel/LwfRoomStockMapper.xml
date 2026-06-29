@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.hotel.mapper.LwfRoomStockMapper">
+
+    <select id="selectSold" resultType="java.lang.Integer">
+        select sold from lwf_room_stock where room_id = #{roomId} and stock_date = #{date}
+    </select>
+
+    <insert id="ensureRow">
+        insert ignore into lwf_room_stock (room_id, stock_date, sold) values (#{roomId}, #{date}, 0)
+    </insert>
+
+    <!-- 原子占用：JOIN 房型表取库存，仅当 sold+count <= stock 才加；InnoDB 行锁保证并发不超卖 -->
+    <update id="tryReserve">
+        update lwf_room_stock s join lwf_room r on s.room_id = r.room_id
+        set s.sold = s.sold + #{count}
+        where s.room_id = #{roomId} and s.stock_date = #{date} and s.sold + #{count} &lt;= r.stock
+    </update>
+
+    <update id="reduceSold">
+        update lwf_room_stock set sold = greatest(0, sold - #{count})
+        where room_id = #{roomId} and stock_date = #{date}
+    </update>
+</mapper>

@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.hotel.mapper.LwfMemberCouponMapper">
+
+    <resultMap type="LwfMemberCoupon" id="LwfMemberCouponResult">
+        <result property="mcId"        column="mc_id"        />
+        <result property="memberId"    column="member_id"    />
+        <result property="couponId"    column="coupon_id"    />
+        <result property="title"       column="title"        />
+        <result property="cat"         column="cat"          />
+        <result property="amount"      column="amount"       />
+        <result property="condAmount"  column="cond_amount"  />
+        <result property="descr"       column="descr"        />
+        <result property="validTime"   column="valid_time"   />
+        <result property="status"      column="status"       />
+        <result property="reason"      column="reason"       />
+        <result property="usedTime"    column="used_time"    />
+        <result property="createBy"    column="create_by"    />
+        <result property="createTime"  column="create_time"  />
+        <result property="updateBy"    column="update_by"    />
+        <result property="updateTime"  column="update_time"  />
+        <result property="remark"      column="remark"       />
+    </resultMap>
+
+    <sql id="selectLwfMemberCouponVo">
+        select mc_id, member_id, coupon_id, title, cat, amount, cond_amount, descr, valid_time, status, reason, used_time, create_by, create_time, update_by, update_time, remark from lwf_member_coupon
+    </sql>
+
+    <select id="selectLwfMemberCouponList" parameterType="LwfMemberCoupon" resultMap="LwfMemberCouponResult">
+        <include refid="selectLwfMemberCouponVo"/>
+        <where>
+            <if test="memberId != null"> and member_id = #{memberId}</if>
+            <if test="status != null and status != ''"> and status = #{status}</if>
+            <if test="cat != null"> and cat = #{cat}</if>
+            <if test="title != null and title != ''"> and title like concat('%', #{title}, '%')</if>
+        </where>
+        order by status asc, valid_time asc, mc_id desc
+    </select>
+
+    <select id="selectLwfMemberCouponByMcId" parameterType="Long" resultMap="LwfMemberCouponResult">
+        <include refid="selectLwfMemberCouponVo"/>
+        where mc_id = #{mcId}
+    </select>
+
+    <insert id="insertLwfMemberCoupon" parameterType="LwfMemberCoupon" useGeneratedKeys="true" keyProperty="mcId">
+        insert into lwf_member_coupon
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="memberId != null">member_id,</if>
+            <if test="couponId != null">coupon_id,</if>
+            <if test="title != null and title != ''">title,</if>
+            <if test="cat != null">cat,</if>
+            <if test="amount != null">amount,</if>
+            <if test="condAmount != null">cond_amount,</if>
+            <if test="descr != null">descr,</if>
+            <if test="validTime != null">valid_time,</if>
+            <if test="status != null">status,</if>
+            <if test="reason != null">reason,</if>
+            <if test="usedTime != null">used_time,</if>
+            <if test="remark != null">remark,</if>
+            <if test="createBy != null">create_by,</if>
+            create_time
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="memberId != null">#{memberId},</if>
+            <if test="couponId != null">#{couponId},</if>
+            <if test="title != null and title != ''">#{title},</if>
+            <if test="cat != null">#{cat},</if>
+            <if test="amount != null">#{amount},</if>
+            <if test="condAmount != null">#{condAmount},</if>
+            <if test="descr != null">#{descr},</if>
+            <if test="validTime != null">#{validTime},</if>
+            <if test="status != null">#{status},</if>
+            <if test="reason != null">#{reason},</if>
+            <if test="usedTime != null">#{usedTime},</if>
+            <if test="remark != null">#{remark},</if>
+            <if test="createBy != null">#{createBy},</if>
+            sysdate()
+        </trim>
+    </insert>
+
+    <update id="updateLwfMemberCoupon" parameterType="LwfMemberCoupon">
+        update lwf_member_coupon
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="memberId != null">member_id = #{memberId},</if>
+            <if test="couponId != null">coupon_id = #{couponId},</if>
+            <if test="title != null and title != ''">title = #{title},</if>
+            <if test="cat != null">cat = #{cat},</if>
+            <if test="amount != null">amount = #{amount},</if>
+            <if test="condAmount != null">cond_amount = #{condAmount},</if>
+            <if test="descr != null">descr = #{descr},</if>
+            <if test="validTime != null">valid_time = #{validTime},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="reason != null">reason = #{reason},</if>
+            <if test="usedTime != null">used_time = #{usedTime},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = sysdate()
+        </trim>
+        where mc_id = #{mcId}
+    </update>
+
+    <delete id="deleteLwfMemberCouponByMcId" parameterType="Long">
+        delete from lwf_member_coupon where mc_id = #{mcId}
+    </delete>
+
+    <delete id="deleteLwfMemberCouponByMcIds" parameterType="String">
+        delete from lwf_member_coupon where mc_id in
+        <foreach item="mcId" collection="array" open="(" separator="," close=")">
+            #{mcId}
+        </foreach>
+    </delete>
+</mapper>

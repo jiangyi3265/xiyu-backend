@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.hotel.mapper.LwfRoomMapper">
+
+    <resultMap type="LwfRoom" id="LwfRoomResult">
+        <result property="roomId"      column="room_id"      />
+        <result property="name"        column="name"         />
+        <result property="area"        column="area"         />
+        <result property="bed"         column="bed"          />
+        <result property="win"         column="win"          />
+        <result property="price"       column="price"        />
+        <result property="scene"       column="scene"        />
+        <result property="tags"        column="tags"         />
+        <result property="feature"     column="feature"      />
+        <result property="cancelRule"  column="cancel_rule"  />
+        <result property="facilities"  column="facilities"   />
+        <result property="stock"       column="stock"        />
+        <result property="sort"        column="sort"         />
+        <result property="status"      column="status"       />
+        <result property="createBy"    column="create_by"    />
+        <result property="createTime"  column="create_time"  />
+        <result property="updateBy"    column="update_by"    />
+        <result property="updateTime"  column="update_time"  />
+        <result property="remark"      column="remark"       />
+    </resultMap>
+
+    <sql id="selectLwfRoomVo">
+        select room_id, name, area, bed, win, price, scene, tags, feature, cancel_rule, facilities, stock, sort, status, create_by, create_time, update_by, update_time, remark from lwf_room
+    </sql>
+
+    <select id="selectLwfRoomList" parameterType="LwfRoom" resultMap="LwfRoomResult">
+        <include refid="selectLwfRoomVo"/>
+        <where>
+            <if test="name != null and name != ''"> and name like concat('%', #{name}, '%')</if>
+            <if test="status != null and status != ''"> and status = #{status}</if>
+        </where>
+        order by sort asc, room_id asc
+    </select>
+
+    <select id="selectLwfRoomByRoomId" parameterType="Long" resultMap="LwfRoomResult">
+        <include refid="selectLwfRoomVo"/>
+        where room_id = #{roomId}
+    </select>
+
+    <insert id="insertLwfRoom" parameterType="LwfRoom" useGeneratedKeys="true" keyProperty="roomId">
+        insert into lwf_room
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="name != null and name != ''">name,</if>
+            <if test="area != null">area,</if>
+            <if test="bed != null">bed,</if>
+            <if test="win != null">win,</if>
+            <if test="price != null">price,</if>
+            <if test="scene != null">scene,</if>
+            <if test="tags != null">tags,</if>
+            <if test="feature != null">feature,</if>
+            <if test="cancelRule != null">cancel_rule,</if>
+            <if test="facilities != null">facilities,</if>
+            <if test="stock != null">stock,</if>
+            <if test="sort != null">sort,</if>
+            <if test="status != null">status,</if>
+            <if test="remark != null">remark,</if>
+            <if test="createBy != null">create_by,</if>
+            create_time
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="name != null and name != ''">#{name},</if>
+            <if test="area != null">#{area},</if>
+            <if test="bed != null">#{bed},</if>
+            <if test="win != null">#{win},</if>
+            <if test="price != null">#{price},</if>
+            <if test="scene != null">#{scene},</if>
+            <if test="tags != null">#{tags},</if>
+            <if test="feature != null">#{feature},</if>
+            <if test="cancelRule != null">#{cancelRule},</if>
+            <if test="facilities != null">#{facilities},</if>
+            <if test="stock != null">#{stock},</if>
+            <if test="sort != null">#{sort},</if>
+            <if test="status != null">#{status},</if>
+            <if test="remark != null">#{remark},</if>
+            <if test="createBy != null">#{createBy},</if>
+            sysdate()
+        </trim>
+    </insert>
+
+    <update id="updateLwfRoom" parameterType="LwfRoom">
+        update lwf_room
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="name != null and name != ''">name = #{name},</if>
+            <if test="area != null">area = #{area},</if>
+            <if test="bed != null">bed = #{bed},</if>
+            <if test="win != null">win = #{win},</if>
+            <if test="price != null">price = #{price},</if>
+            <if test="scene != null">scene = #{scene},</if>
+            <if test="tags != null">tags = #{tags},</if>
+            <if test="feature != null">feature = #{feature},</if>
+            <if test="cancelRule != null">cancel_rule = #{cancelRule},</if>
+            <if test="facilities != null">facilities = #{facilities},</if>
+            <if test="stock != null">stock = #{stock},</if>
+            <if test="sort != null">sort = #{sort},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = sysdate()
+        </trim>
+        where room_id = #{roomId}
+    </update>
+
+    <delete id="deleteLwfRoomByRoomId" parameterType="Long">
+        delete from lwf_room where room_id = #{roomId}
+    </delete>
+
+    <delete id="deleteLwfRoomByRoomIds" parameterType="String">
+        delete from lwf_room where room_id in
+        <foreach item="roomId" collection="array" open="(" separator="," close=")">
+            #{roomId}
+        </foreach>
+    </delete>
+</mapper>

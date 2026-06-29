@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.hotel.mapper.LwfMemberMapper">
+
+    <resultMap type="LwfMember" id="LwfMemberResult">
+        <result property="memberId"    column="member_id"    />
+        <result property="phone"       column="phone"        />
+        <result property="password"    column="password"     />
+        <result property="name"        column="name"         />
+        <result property="avatar"      column="avatar"       />
+        <result property="level"       column="level"        />
+        <result property="points"      column="points"       />
+        <result property="balance"     column="balance"      />
+        <result property="status"      column="status"       />
+        <result property="openid"      column="openid"       />
+        <result property="address"     column="address"      />
+        <result property="createBy"    column="create_by"    />
+        <result property="createTime"  column="create_time"  />
+        <result property="updateBy"    column="update_by"    />
+        <result property="updateTime"  column="update_time"  />
+        <result property="remark"      column="remark"       />
+    </resultMap>
+
+    <sql id="selectLwfMemberVo">
+        select member_id, phone, password, name, avatar, level, points, balance, status, openid, address, create_by, create_time, update_by, update_time, remark from lwf_member
+    </sql>
+
+    <select id="selectLwfMemberList" parameterType="LwfMember" resultMap="LwfMemberResult">
+        <include refid="selectLwfMemberVo"/>
+        <where>
+            <if test="phone != null and phone != ''"> and phone like concat('%', #{phone}, '%')</if>
+            <if test="name != null and name != ''"> and name like concat('%', #{name}, '%')</if>
+            <if test="level != null and level != ''"> and level = #{level}</if>
+            <if test="status != null and status != ''"> and status = #{status}</if>
+            <if test="openid != null and openid != ''"> and openid = #{openid}</if>
+        </where>
+        order by member_id desc
+    </select>
+
+    <select id="selectLwfMemberByMemberId" parameterType="Long" resultMap="LwfMemberResult">
+        <include refid="selectLwfMemberVo"/>
+        where member_id = #{memberId}
+    </select>
+
+    <select id="selectLwfMemberByPhone" parameterType="String" resultMap="LwfMemberResult">
+        <include refid="selectLwfMemberVo"/>
+        where phone = #{phone} limit 1
+    </select>
+
+    <insert id="insertLwfMember" parameterType="LwfMember" useGeneratedKeys="true" keyProperty="memberId">
+        insert into lwf_member
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="phone != null and phone != ''">phone,</if>
+            <if test="password != null">password,</if>
+            <if test="name != null">name,</if>
+            <if test="avatar != null">avatar,</if>
+            <if test="level != null">level,</if>
+            <if test="points != null">points,</if>
+            <if test="balance != null">balance,</if>
+            <if test="status != null">status,</if>
+            <if test="openid != null">openid,</if>
+            <if test="address != null">address,</if>
+            <if test="remark != null">remark,</if>
+            <if test="createBy != null">create_by,</if>
+            create_time
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="phone != null and phone != ''">#{phone},</if>
+            <if test="password != null">#{password},</if>
+            <if test="name != null">#{name},</if>
+            <if test="avatar != null">#{avatar},</if>
+            <if test="level != null">#{level},</if>
+            <if test="points != null">#{points},</if>
+            <if test="balance != null">#{balance},</if>
+            <if test="status != null">#{status},</if>
+            <if test="openid != null">#{openid},</if>
+            <if test="address != null">#{address},</if>
+            <if test="remark != null">#{remark},</if>
+            <if test="createBy != null">#{createBy},</if>
+            sysdate()
+        </trim>
+    </insert>
+
+    <update id="updateLwfMember" parameterType="LwfMember">
+        update lwf_member
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="phone != null and phone != ''">phone = #{phone},</if>
+            <if test="password != null and password != ''">password = #{password},</if>
+            <if test="name != null">name = #{name},</if>
+            <if test="avatar != null">avatar = #{avatar},</if>
+            <if test="level != null">level = #{level},</if>
+            <if test="points != null">points = #{points},</if>
+            <if test="balance != null">balance = #{balance},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="openid != null">openid = #{openid},</if>
+            <if test="address != null">address = #{address},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = sysdate()
+        </trim>
+        where member_id = #{memberId}
+    </update>
+
+    <delete id="deleteLwfMemberByMemberId" parameterType="Long">
+        delete from lwf_member where member_id = #{memberId}
+    </delete>
+
+    <delete id="deleteLwfMemberByMemberIds" parameterType="String">
+        delete from lwf_member where member_id in
+        <foreach item="memberId" collection="array" open="(" separator="," close=")">
+            #{memberId}
+        </foreach>
+    </delete>
+</mapper>
