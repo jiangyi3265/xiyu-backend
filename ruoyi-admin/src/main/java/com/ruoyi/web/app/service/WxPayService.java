@@ -103,6 +103,11 @@ public class WxPayService
 
     public Map<String, String> refund(String orderNo, int totalFen, int refundFen)
     {
+        return refund(orderNo, "R" + orderNo, totalFen, refundFen);
+    }
+
+    public Map<String, String> refund(String orderNo, String outRefundNo, int totalFen, int refundFen)
+    {
         ensureReady();
         Map<String, Object> amount = new LinkedHashMap<>();
         amount.put("refund", refundFen);
@@ -111,7 +116,7 @@ public class WxPayService
 
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("out_trade_no", orderNo);
-        body.put("out_refund_no", "R" + orderNo);
+        body.put("out_refund_no", outRefundNo);
         body.put("reason", "用户申请退款");
         body.put("amount", amount);
 

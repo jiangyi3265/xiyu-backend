@@ -856,7 +856,7 @@ public class AppBizService
             int refundFen = wxPayService.yuanToFen(refundAmount);
             if (refundFen > 0)
             {
-                wxPayService.refund(rechargeOrder.getOrderNo(), totalFen, refundFen);
+                wxPayService.refund(rechargeOrder.getOrderNo(), "R" + refundOrder.getOrderNo(), totalFen, refundFen);
             }
         }
 
