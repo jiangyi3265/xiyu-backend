@@ -150,7 +150,7 @@ public class AppMemberController extends BaseController
                 && !"null".equalsIgnoreCase(value.trim());
     }
 
-    /** 下单并发起支付：演示模式直接完成(needPay=false)；已接微信支付返回唤起参数(needPay=true) */
+    /** 下单并发起真实微信支付；未配置商户参数时不做模拟支付，直接报错。 */
     @PostMapping("/order")
     public AjaxResult createOrder(@RequestBody AppOrderReq req, HttpServletRequest request)
     {
@@ -164,13 +164,6 @@ public class AppMemberController extends BaseController
     public AjaxResult prepayOrder(@PathVariable Long orderId, HttpServletRequest request)
     {
         Long memberId = AppUserContext.getMemberId();
-        if (!wxPayService.enabled())
-        {
-            appBizService.payOrder(memberId, orderId); // 演示模式：直接完成
-            AjaxResult ajax = success();
-            ajax.put("needPay", false);
-            return ajax;
-        }
         LwfOrder order = appBizService.getMemberPayOrder(memberId, orderId);
         return buildPayResult(memberId, order, request);
     }
@@ -181,7 +174,7 @@ public class AppMemberController extends BaseController
         AjaxResult ajax = success();
         ajax.put("orderId", order.getOrderId());
         ajax.put("orderNo", order.getOrderNo());
-        if (wxPayService.enabled() && "pay".equals(order.getStatus()))
+        if ("pay".equals(order.getStatus()))
         {
             LwfMember m = memberService.selectLwfMemberByMemberId(memberId);
             Map<String, String> pay = wxPayService.jsapiPay(order.getOrderNo(), order.getTitle(),
@@ -210,7 +203,7 @@ public class AppMemberController extends BaseController
         return toAjax(appBizService.cancelOrder(AppUserContext.getMemberId(), orderId));
     }
 
-    /** 支付订单（待支付→待使用） */
+    /** 禁止模拟支付：真实订单只能由微信支付回调结算。 */
     @PutMapping("/order/{orderId}/pay")
     public AjaxResult payOrder(@PathVariable Long orderId)
     {
@@ -241,7 +234,7 @@ public class AppMemberController extends BaseController
         return toAjax(appBizService.submitReview(AppUserContext.getMemberId(), orderId, content, rating));
     }
 
-    /** 储值充值并发起支付：演示模式直接入账(needPay=false,返回member)；已接支付返回唤起参数 */
+    /** 储值充值并发起真实微信支付；支付成功回调后入账。 */
     @PostMapping("/recharge")
     public AjaxResult recharge(@RequestBody Map<String, Object> body, HttpServletRequest request)
     {

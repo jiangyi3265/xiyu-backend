@@ -370,6 +370,12 @@ public class AppBizService
             payable = BigDecimal.ZERO;
         }
 
+        boolean needWechatPay = payable.compareTo(BigDecimal.ZERO) > 0;
+        if (needWechatPay)
+        {
+            wxPayService.ensureReady();
+        }
+
         // 客房订单：按日期防超卖，锁定每一晚库存；订满则在建单前抛错
         if (isRoom)
         {
@@ -384,7 +390,7 @@ public class AppBizService
         order.setShop("平云山居");
         order.setKind(req.getKind());
         order.setScene(req.getScene());
-        order.setStatus(wxPayService.enabled() ? "pay" : "use");
+        order.setStatus(needWechatPay ? "pay" : "use");
         order.setTitle(req.getTitle());
         order.setUnitPrice(unit);
         order.setQty(qty);
@@ -402,8 +408,8 @@ public class AppBizService
         order.setCreateBy("app");
         orderService.insertLwfOrder(order);
 
-        // 演示模式（未接支付）立即结算，行为与历史一致；已接支付则待支付，结算延后到支付成功 markPaid
-        if (!wxPayService.enabled())
+        // 0 元订单无需微信支付，直接结算；有实付金额的订单必须等待微信支付回调。
+        if (!needWechatPay)
         {
             settlePurchase(member, order);
         }
@@ -437,7 +443,7 @@ public class AppBizService
         }
     }
 
-    /** 储值充值：演示模式立即入账；已接支付则建待支付单，支付成功后入账。统一返回订单。 */
+    /** 储值充值：创建待支付单，支付成功回调后入账。 */
     @Transactional(rollbackFor = Exception.class)
     public LwfOrder recharge(Long memberId, Long rechargeId, Integer qtyParam)
     {
@@ -453,6 +459,7 @@ public class AppBizService
         }
         int qty = qtyParam == null || qtyParam < 1 ? 1 : qtyParam;
         BigDecimal pay = r.getAmount().multiply(new BigDecimal(qty));
+        wxPayService.ensureReady();
 
         LwfOrder order = new LwfOrder();
         order.setOrderNo(genOrderNo());
@@ -461,7 +468,7 @@ public class AppBizService
         order.setShop("平云山居");
         order.setKind("recharge");
         order.setScene("night");
-        order.setStatus(wxPayService.enabled() ? "pay" : "use");
+        order.setStatus("pay");
         order.setTitle("储值充值 ¥" + pay.stripTrailingZeros().toPlainString() + " ×" + qty);
         order.setUnitPrice(r.getAmount());
         order.setQty(qty);
@@ -471,10 +478,6 @@ public class AppBizService
         order.setCreateBy("app");
         orderService.insertLwfOrder(order);
 
-        if (!wxPayService.enabled())
-        {
-            applyRecharge(member, r, qty);
-        }
         return order;
     }
 
@@ -577,21 +580,24 @@ public class AppBizService
         }
     }
 
-    /** 支付订单（演示/兜底手动支付）：待支付 -> 结算并转待使用 */
+    /** 支付订单必须通过微信支付完成，禁止手动/模拟改为已支付。 */
     @Transactional(rollbackFor = Exception.class)
     public int payOrder(Long memberId, Long orderId)
     {
-        LwfOrder order = getMemberOrder(memberId, orderId);
-        if (!"pay".equals(order.getStatus()))
-        {
-            throw new ServiceException("当前订单状态不可支付");
-        }
-        return markPaid(order.getOrderNo()) ? 1 : 0;
+        getMemberOrder(memberId, orderId);
+        throw new ServiceException("请通过微信支付完成订单");
     }
 
-    /** 支付成功结算入口（微信回调 / 手动支付）：按订单类型入账并转待使用，幂等 */
+    /** 支付成功结算入口：按订单类型入账并转待使用，幂等。 */
     @Transactional(rollbackFor = Exception.class)
     public boolean markPaid(String orderNo)
+    {
+        return markPaid(orderNo, null, null);
+    }
+
+    /** 支付成功结算入口：微信回调验签解密后调用，严格校验实付金额。 */
+    @Transactional(rollbackFor = Exception.class)
+    public boolean markPaid(String orderNo, Integer paidFen, String transactionId)
     {
         LwfOrder q = new LwfOrder();
         q.setOrderNo(orderNo);
@@ -600,6 +606,11 @@ public class AppBizService
         if (order == null)
         {
             return false;
+        }
+        int expectedFen = wxPayService.yuanToFen(order.getPayAmount());
+        if (paidFen != null && paidFen.intValue() != expectedFen)
+        {
+            throw new ServiceException("微信支付金额与订单金额不一致");
         }
         if (!"pay".equals(order.getStatus()))
         {
@@ -626,6 +637,10 @@ public class AppBizService
         up.setOrderId(order.getOrderId());
         up.setStatus("use");
         up.setUpdateBy("pay");
+        if (StringUtils.isNotEmpty(transactionId))
+        {
+            up.setRemark((StringUtils.isEmpty(order.getRemark()) ? "" : order.getRemark() + "\n") + "微信支付单号：" + transactionId);
+        }
         orderService.updateLwfOrder(up);
         return true;
     }

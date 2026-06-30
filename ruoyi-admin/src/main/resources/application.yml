@@ -98,20 +98,27 @@ token:
   # 令牌有效期（默认30分钟）
   expireTime: 30
 
-# 微信小程序 / 微信支付（预留：填入即启用真实登录与支付，全部留空=演示模式，不影响本地联调）
+# 微信小程序 / 微信支付
 wx:
   # 小程序 appid / 密钥（jscode2session 一键登录用）
   appid: ${WX_APPID:}
   secret: ${WX_SECRET:}
   pay:
-    # 商户号
+    # 微信支付 APIv3 商户号
     mchId: ${WX_MCH_ID:}
-    # 商户API密钥(APIv2, 32位)，在微信商户平台设置
-    apiKey: ${WX_API_KEY:}
-    # 支付结果回调地址(公网 HTTPS)，如 https://api.example.com/app/pay/notify
+    # 商户API证书序列号（商户平台下载 apiclient_cert.pem 后可查看）
+    merchantSerialNo: ${WX_PAY_MERCHANT_SERIAL_NO:}
+    # 商户API证书私钥 apiclient_key.pem 的绝对路径；也可用 WX_PAY_PRIVATE_KEY 直接注入 PEM 内容
+    privateKeyPath: ${WX_PAY_PRIVATE_KEY_PATH:}
+    privateKey: ${WX_PAY_PRIVATE_KEY:}
+    # APIv3 密钥（32位），在微信商户平台设置
+    apiV3Key: ${WX_PAY_API_V3_KEY:}
+    # 支付结果回调地址（公网 HTTPS，不能带 query），如 https://xiyu.oksja.cn/app/pay/notify
     notifyUrl: ${WX_NOTIFY_URL:}
-    # 退款用商户证书 apiclient_cert.p12 的绝对路径（留空=退款只本地回退积分/券、不退微信钱）
-    certPath: ${WX_CERT_PATH:}
+    # 微信支付平台证书 cert.pem 路径；或使用微信支付公钥 + 公钥ID
+    platformCertPath: ${WX_PAY_PLATFORM_CERT_PATH:}
+    platformPublicKeyPath: ${WX_PAY_PLATFORM_PUBLIC_KEY_PATH:}
+    platformPublicKeyId: ${WX_PAY_PLATFORM_PUBLIC_KEY_ID:}
 
 # MyBatis配置
 mybatis:

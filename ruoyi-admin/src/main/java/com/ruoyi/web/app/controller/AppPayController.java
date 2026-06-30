@@ -14,7 +14,7 @@ import com.ruoyi.web.app.service.AppBizService;
 import com.ruoyi.web.app.service.WxPayService;
 
 /**
- * 微信支付回调（匿名，由微信服务器调用）。验签通过后结算订单并应答。
+ * 微信支付 APIv3 回调（匿名，由微信服务器调用）。验签、解密、核对金额后结算订单并应答。
  *
  * @author liwangfu
  */
@@ -30,9 +30,9 @@ public class AppPayController
     @Autowired
     private AppBizService appBizService;
 
-    /** 支付结果通知（APIv2 XML） */
-    @PostMapping(value = "/notify", produces = "application/xml;charset=UTF-8")
-    public String notify(HttpServletRequest request)
+    /** 支付结果通知（APIv3 JSON） */
+    @PostMapping(value = "/notify", produces = "application/json;charset=UTF-8")
+    public Map<String, String> notify(HttpServletRequest request)
     {
         try
         {
@@ -45,23 +45,14 @@ public class AppPayController
                     sb.append(line);
                 }
             }
-            Map<String, String> data = wxPayService.parseNotify(sb.toString());
-            if (!"SUCCESS".equals(data.get("return_code")) || !"SUCCESS".equals(data.get("result_code")))
-            {
-                return wxPayService.notifyFailXml("支付未成功");
-            }
-            if (!wxPayService.verifyNotifySign(data))
-            {
-                log.warn("微信支付回调验签失败 out_trade_no={}", data.get("out_trade_no"));
-                return wxPayService.notifyFailXml("签名校验失败");
-            }
-            boolean ok = appBizService.markPaid(data.get("out_trade_no"));
-            return ok ? wxPayService.notifySuccessXml() : wxPayService.notifyFailXml("订单处理失败");
+            WxPayService.PayNotify data = wxPayService.parseAndVerifyNotify(sb.toString(), request);
+            boolean ok = appBizService.markPaid(data.getOutTradeNo(), data.getPaidFen(), data.getTransactionId());
+            return ok ? wxPayService.notifySuccess() : wxPayService.notifyFail("订单处理失败");
         }
         catch (Exception e)
         {
             log.error("微信支付回调异常", e);
-            return wxPayService.notifyFailXml("系统异常");
+            return wxPayService.notifyFail("系统异常");
         }
     }
 }

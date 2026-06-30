@@ -15,7 +15,7 @@ import com.ruoyi.web.app.service.WxPayService;
 
 /**
  * 订单超时自动关闭：每 5 分钟扫描，关闭超过 30 分钟仍未支付（pay）的订单。
- * 仅在已启用微信支付时生效——演示模式下订单不会停留在待支付，故跳过，避免误动演示数据。
+ * 仅在微信支付配置完整时生效。
  *
  * @author liwangfu
  */
