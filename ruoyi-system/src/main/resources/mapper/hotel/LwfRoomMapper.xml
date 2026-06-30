@@ -11,6 +11,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="bed"         column="bed"          />
         <result property="win"         column="win"          />
         <result property="price"       column="price"        />
+        <result property="coverUrl"    column="cover_url"    />
         <result property="scene"       column="scene"        />
         <result property="tags"        column="tags"         />
         <result property="feature"     column="feature"      />
@@ -27,7 +28,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </resultMap>
 
     <sql id="selectLwfRoomVo">
-        select room_id, name, area, bed, win, price, scene, tags, feature, cancel_rule, facilities, stock, sort, status, create_by, create_time, update_by, update_time, remark from lwf_room
+        select room_id, name, area, bed, win, price, cover_url, scene, tags, feature, cancel_rule, facilities, stock, sort, status, create_by, create_time, update_by, update_time, remark from lwf_room
     </sql>
 
     <select id="selectLwfRoomList" parameterType="LwfRoom" resultMap="LwfRoomResult">
@@ -52,6 +53,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="bed != null">bed,</if>
             <if test="win != null">win,</if>
             <if test="price != null">price,</if>
+            <if test="coverUrl != null">cover_url,</if>
             <if test="scene != null">scene,</if>
             <if test="tags != null">tags,</if>
             <if test="feature != null">feature,</if>
@@ -70,6 +72,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="bed != null">#{bed},</if>
             <if test="win != null">#{win},</if>
             <if test="price != null">#{price},</if>
+            <if test="coverUrl != null">#{coverUrl},</if>
             <if test="scene != null">#{scene},</if>
             <if test="tags != null">#{tags},</if>
             <if test="feature != null">#{feature},</if>
@@ -92,6 +95,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="bed != null">bed = #{bed},</if>
             <if test="win != null">win = #{win},</if>
             <if test="price != null">price = #{price},</if>
+            <if test="coverUrl != null">cover_url = #{coverUrl},</if>
             <if test="scene != null">scene = #{scene},</if>
             <if test="tags != null">tags = #{tags},</if>
             <if test="feature != null">feature = #{feature},</if>

@@ -40,6 +40,9 @@ public class LwfRoom extends BaseEntity
     @Excel(name = "价格")
     private BigDecimal price;
 
+    /** 房型封面图 */
+    private String coverUrl;
+
     /** 配图场景(0-3) */
     private String scene;
 
@@ -84,6 +87,9 @@ public class LwfRoom extends BaseEntity
     public void setPrice(BigDecimal price) { this.price = price; }
     public BigDecimal getPrice() { return price; }
 
+    public void setCoverUrl(String coverUrl) { this.coverUrl = coverUrl; }
+    public String getCoverUrl() { return coverUrl; }
+
     public void setScene(String scene) { this.scene = scene; }
     public String getScene() { return scene; }
 
@@ -117,6 +123,7 @@ public class LwfRoom extends BaseEntity
             .append("bed", getBed())
             .append("win", getWin())
             .append("price", getPrice())
+            .append("coverUrl", getCoverUrl())
             .append("scene", getScene())
             .append("tags", getTags())
             .append("feature", getFeature())

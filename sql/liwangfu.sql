@@ -38,6 +38,7 @@ CREATE TABLE `lwf_room` (
   `bed`         varchar(50)   DEFAULT '' COMMENT '床型',
   `win`         varchar(50)   DEFAULT '' COMMENT '窗户',
   `price`       decimal(10,2) DEFAULT 0.00 COMMENT '价格(元/晚)',
+  `cover_url`   varchar(500)  DEFAULT '' COMMENT '房型封面图',
   `scene`       varchar(16)   DEFAULT '0' COMMENT '配图场景(0-3)',
   `tags`        varchar(255)  DEFAULT '' COMMENT '标签(逗号分隔)',
   `feature`     varchar(500)  DEFAULT '' COMMENT '房型特色',
