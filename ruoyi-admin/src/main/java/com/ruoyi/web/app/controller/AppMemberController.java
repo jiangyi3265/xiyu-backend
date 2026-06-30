@@ -3,6 +3,7 @@ package com.ruoyi.web.app.controller;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.math.BigDecimal;
 import javax.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -222,6 +223,25 @@ public class AppMemberController extends BaseController
     public AjaxResult refundOrder(@PathVariable Long orderId)
     {
         return toAjax(appBizService.refundOrder(AppUserContext.getMemberId(), orderId));
+    }
+
+    /** 储值余额可退金额 */
+    @GetMapping("/recharge/refund/info")
+    public AjaxResult rechargeRefundInfo()
+    {
+        AjaxResult ajax = success();
+        ajax.put("maxAmount", appBizService.maxRechargeRefundAmount(AppUserContext.getMemberId()));
+        ajax.put("policy", "仅退剩余可退实付本金，赠送金额、赠券、赠送权益不可提现；提交后由后台审核。");
+        return ajax;
+    }
+
+    /** 申请储值余额退款 */
+    @PostMapping("/recharge/refund")
+    public AjaxResult rechargeRefund(@RequestBody Map<String, Object> body)
+    {
+        BigDecimal amount = body.get("amount") == null ? BigDecimal.ZERO : new BigDecimal(String.valueOf(body.get("amount")));
+        String reason = body.get("reason") == null ? "" : String.valueOf(body.get("reason"));
+        return toAjax(appBizService.requestRechargeRefund(AppUserContext.getMemberId(), amount, reason));
     }
 
     /** 提交订单评价 */

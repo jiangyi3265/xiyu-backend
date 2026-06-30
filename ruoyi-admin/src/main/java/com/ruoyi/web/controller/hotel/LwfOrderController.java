@@ -1,6 +1,7 @@
 package com.ruoyi.web.controller.hotel;
 
 import java.util.List;
+import java.util.Map;
 import javax.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -18,6 +19,7 @@ import com.ruoyi.common.core.domain.AjaxResult;
 import com.ruoyi.common.enums.BusinessType;
 import com.ruoyi.hotel.domain.LwfOrder;
 import com.ruoyi.hotel.service.ILwfOrderService;
+import com.ruoyi.web.app.service.AppBizService;
 import com.ruoyi.common.utils.poi.ExcelUtil;
 import com.ruoyi.common.core.page.TableDataInfo;
 
@@ -32,6 +34,8 @@ public class LwfOrderController extends BaseController
 {
     @Autowired
     private ILwfOrderService lwfOrderService;
+    @Autowired
+    private AppBizService appBizService;
 
     @PreAuthorize("@ss.hasPermi('hotel:order:list')")
     @GetMapping("/list")
@@ -66,6 +70,23 @@ public class LwfOrderController extends BaseController
     {
         lwfOrder.setUpdateBy(getUsername());
         return toAjax(lwfOrderService.updateLwfOrder(lwfOrder));
+    }
+
+    @PreAuthorize("@ss.hasPermi('hotel:order:edit')")
+    @Log(title = "订单退款审核", businessType = BusinessType.UPDATE)
+    @PutMapping("/{orderId}/refund/approve")
+    public AjaxResult approveRefund(@PathVariable Long orderId)
+    {
+        return toAjax(appBizService.approveRefund(orderId, getUsername()));
+    }
+
+    @PreAuthorize("@ss.hasPermi('hotel:order:edit')")
+    @Log(title = "订单退款驳回", businessType = BusinessType.UPDATE)
+    @PutMapping("/{orderId}/refund/reject")
+    public AjaxResult rejectRefund(@PathVariable Long orderId, @RequestBody(required = false) Map<String, String> body)
+    {
+        String reason = body == null ? "" : body.get("reason");
+        return toAjax(appBizService.rejectRefund(orderId, reason, getUsername()));
     }
 
     @PreAuthorize("@ss.hasPermi('hotel:order:remove')")

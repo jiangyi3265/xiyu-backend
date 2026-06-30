@@ -7,6 +7,7 @@ import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -33,6 +34,7 @@ import com.ruoyi.hotel.service.ILwfPointlogService;
 import com.ruoyi.hotel.service.ILwfProductService;
 import com.ruoyi.hotel.service.ILwfRechargeService;
 import com.ruoyi.hotel.service.ILwfRoomService;
+import com.ruoyi.system.service.ISysConfigService;
 import com.ruoyi.web.app.domain.AppOrderReq;
 
 /**
@@ -68,6 +70,8 @@ public class AppBizService
     private ILwfReviewService reviewService;
     @Autowired
     private WxPayService wxPayService;
+    @Autowired
+    private ISysConfigService configService;
 
     /** 微信小程序 appid（application.yml: wx.appid，缺省为空=演示模式） */
     @Value("${wx.appid:}")
@@ -672,41 +676,264 @@ public class AppBizService
         return orderService.updateLwfOrder(up);
     }
 
-    /** 订单退款：回退积分/券，已支付的发起微信退款，转退款态 */
+    /** 普通订单退款申请：C端只提交申请，后台审核通过后才真正退款。 */
     @Transactional(rollbackFor = Exception.class)
     public int refundOrder(Long memberId, Long orderId)
     {
         LwfOrder order = getMemberOrder(memberId, orderId);
-        if (!"use".equals(order.getStatus()) && !"pay".equals(order.getStatus()) && !"confirm".equals(order.getStatus()))
+        if (!"use".equals(order.getStatus()) && !"confirm".equals(order.getStatus()))
         {
-            throw new ServiceException("当前订单状态不可退款");
+            throw new ServiceException("当前订单状态不可申请退款");
         }
         if ("recharge".equals(order.getKind()))
         {
-            throw new ServiceException("储值订单不支持自助退款，请联系前台处理");
+            throw new ServiceException("储值订单请从会员中心的储值余额申请退款");
         }
-        // 已结算（已支付）的订单：先退微信钱（已配证书时），再回退积分/券
-        boolean settled = "use".equals(order.getStatus());
-        if (settled)
+        LwfOrder up = new LwfOrder();
+        up.setOrderId(orderId);
+        up.setStatus("refund_apply");
+        up.setUpdateBy("app");
+        up.setRemark(appendRemark(order.getRemark(), "用户申请退款，等待后台审核"));
+        return orderService.updateLwfOrder(up);
+    }
+
+    /** 储值余额退款申请。赠送金额不可提现，只锁定仍可退的实付本金。 */
+    @Transactional(rollbackFor = Exception.class)
+    public int requestRechargeRefund(Long memberId, BigDecimal amount, String reason)
+    {
+        LwfMember member = memberService.selectLwfMemberByMemberId(memberId);
+        if (member == null)
         {
-            if (wxPayService.refundEnabled())
-            {
-                int totalFen = order.getPayAmount() == null ? 0
-                        : order.getPayAmount().multiply(new BigDecimal(100)).setScale(0, RoundingMode.HALF_UP).intValue();
-                if (totalFen > 0)
-                {
-                    wxPayService.refund(order.getOrderNo(), totalFen, totalFen);
-                }
-            }
-            LwfMember member = memberService.selectLwfMemberByMemberId(memberId);
-            reverseSettle(member, order);
+            throw new ServiceException("会员不存在");
         }
+        BigDecimal balance = money(member.getBalance());
+        if (balance.compareTo(BigDecimal.ZERO) <= 0)
+        {
+            throw new ServiceException("当前没有可退储值余额");
+        }
+        BigDecimal requestAmount = money(amount);
+        if (requestAmount.compareTo(BigDecimal.ZERO) <= 0)
+        {
+            requestAmount = balance;
+        }
+        BigDecimal max = maxRechargeRefundAmount(memberId, balance);
+        if (requestAmount.compareTo(max) > 0)
+        {
+            throw new ServiceException("最多可申请退款 ¥" + max.toPlainString() + "，赠送部分不可提现");
+        }
+
+        BigDecimal left = requestAmount;
+        List<LwfOrder> rechargeOrders = memberOrders(memberId).stream()
+                .filter(o -> "recharge".equals(o.getKind()))
+                .filter(o -> "use".equals(o.getStatus()) || "done".equals(o.getStatus()))
+                .collect(Collectors.toList());
+        int created = 0;
+        for (LwfOrder rechargeOrder : rechargeOrders)
+        {
+            BigDecimal available = refundablePrincipal(rechargeOrder).subtract(lockedRefundAmount(memberId, rechargeOrder.getOrderId()));
+            if (available.compareTo(BigDecimal.ZERO) <= 0)
+            {
+                continue;
+            }
+            BigDecimal part = left.min(available);
+            LwfOrder refund = new LwfOrder();
+            refund.setOrderNo(genOrderNo());
+            refund.setMemberId(memberId);
+            refund.setMemberName(member.getName());
+            refund.setShop("平云山居");
+            refund.setKind("balance_refund");
+            refund.setScene("night");
+            refund.setStatus("refund_apply");
+            refund.setTitle("储值余额退款 ¥" + part.stripTrailingZeros().toPlainString());
+            refund.setUnitPrice(part);
+            refund.setQty(1);
+            refund.setAmount(part);
+            refund.setPayAmount(part);
+            refund.setRefId(rechargeOrder.getOrderId());
+            refund.setRemark(appendRemark(reason, refundPolicyText()));
+            refund.setCreateBy("app");
+            orderService.insertLwfOrder(refund);
+            created++;
+            left = left.subtract(part);
+            if (left.compareTo(BigDecimal.ZERO) <= 0)
+            {
+                break;
+            }
+        }
+        if (left.compareTo(BigDecimal.ZERO) > 0 || created == 0)
+        {
+            throw new ServiceException("当前可退实付本金不足，赠送金额不可提现");
+        }
+        return created;
+    }
+
+    public BigDecimal maxRechargeRefundAmount(Long memberId)
+    {
+        LwfMember member = memberService.selectLwfMemberByMemberId(memberId);
+        return member == null ? BigDecimal.ZERO : maxRechargeRefundAmount(memberId, money(member.getBalance()));
+    }
+
+    private BigDecimal maxRechargeRefundAmount(Long memberId, BigDecimal balance)
+    {
+        BigDecimal locked = memberOrders(memberId).stream()
+                .filter(o -> "balance_refund".equals(o.getKind()))
+                .filter(o -> "refund_apply".equals(o.getStatus()))
+                .map(o -> money(o.getPayAmount()))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal refundable = memberOrders(memberId).stream()
+                .filter(o -> "recharge".equals(o.getKind()))
+                .filter(o -> "use".equals(o.getStatus()) || "done".equals(o.getStatus()))
+                .map(o -> refundablePrincipal(o).subtract(lockedRefundAmount(memberId, o.getOrderId())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal availableBalance = balance.subtract(locked);
+        if (availableBalance.compareTo(BigDecimal.ZERO) < 0)
+        {
+            availableBalance = BigDecimal.ZERO;
+        }
+        return availableBalance.min(refundable).setScale(2, RoundingMode.DOWN);
+    }
+
+    /** 后台同意退款。 */
+    @Transactional(rollbackFor = Exception.class)
+    public int approveRefund(Long orderId, String operator)
+    {
+        LwfOrder order = orderService.selectLwfOrderByOrderId(orderId);
+        if (order == null)
+        {
+            throw new ServiceException("订单不存在");
+        }
+        if (!"refund_apply".equals(order.getStatus()))
+        {
+            throw new ServiceException("仅退款申请中订单可审核通过");
+        }
+        if ("balance_refund".equals(order.getKind()))
+        {
+            return approveBalanceRefund(order, operator);
+        }
+        if (wxPayService.refundEnabled())
+        {
+            int totalFen = wxPayService.yuanToFen(order.getPayAmount());
+            if (totalFen > 0)
+            {
+                wxPayService.refund(order.getOrderNo(), totalFen, totalFen);
+            }
+        }
+        LwfMember member = memberService.selectLwfMemberByMemberId(order.getMemberId());
+        reverseSettle(member, order);
         releaseRoomStock(order);
         LwfOrder up = new LwfOrder();
         up.setOrderId(orderId);
         up.setStatus("refund");
-        up.setUpdateBy("app");
+        up.setUpdateBy(operator);
+        up.setRemark(appendRemark(order.getRemark(), "后台同意退款"));
         return orderService.updateLwfOrder(up);
+    }
+
+    private int approveBalanceRefund(LwfOrder refundOrder, String operator)
+    {
+        LwfOrder rechargeOrder = orderService.selectLwfOrderByOrderId(refundOrder.getRefId());
+        if (rechargeOrder == null || !"recharge".equals(rechargeOrder.getKind()))
+        {
+            throw new ServiceException("原储值订单不存在");
+        }
+        BigDecimal refundAmount = money(refundOrder.getPayAmount());
+        LwfMember member = memberService.selectLwfMemberByMemberId(refundOrder.getMemberId());
+        if (member == null)
+        {
+            throw new ServiceException("会员不存在");
+        }
+        if (money(member.getBalance()).compareTo(refundAmount) < 0)
+        {
+            throw new ServiceException("会员当前余额不足，不能通过该退款");
+        }
+        if (refundAmount.compareTo(refundablePrincipal(rechargeOrder)) > 0)
+        {
+            throw new ServiceException("退款金额超过原储值实付本金");
+        }
+        if (wxPayService.refundEnabled())
+        {
+            int totalFen = wxPayService.yuanToFen(rechargeOrder.getPayAmount());
+            int refundFen = wxPayService.yuanToFen(refundAmount);
+            if (refundFen > 0)
+            {
+                wxPayService.refund(rechargeOrder.getOrderNo(), totalFen, refundFen);
+            }
+        }
+
+        LwfMember upMember = new LwfMember();
+        upMember.setMemberId(member.getMemberId());
+        upMember.setBalance(money(member.getBalance()).subtract(refundAmount));
+        memberService.updateLwfMember(upMember);
+
+        LwfOrder up = new LwfOrder();
+        up.setOrderId(refundOrder.getOrderId());
+        up.setStatus("refund");
+        up.setUpdateBy(operator);
+        up.setRemark(appendRemark(refundOrder.getRemark(), "后台同意储值余额退款，已扣减会员余额"));
+        return orderService.updateLwfOrder(up);
+    }
+
+    /** 后台驳回退款。 */
+    @Transactional(rollbackFor = Exception.class)
+    public int rejectRefund(Long orderId, String reason, String operator)
+    {
+        LwfOrder order = orderService.selectLwfOrderByOrderId(orderId);
+        if (order == null)
+        {
+            throw new ServiceException("订单不存在");
+        }
+        if (!"refund_apply".equals(order.getStatus()))
+        {
+            throw new ServiceException("仅退款申请中订单可驳回");
+        }
+        LwfOrder up = new LwfOrder();
+        up.setOrderId(orderId);
+        up.setStatus("refund_reject");
+        up.setUpdateBy(operator);
+        up.setRemark(appendRemark(order.getRemark(), "后台驳回退款：" + (StringUtils.isEmpty(reason) ? "未填写原因" : reason)));
+        return orderService.updateLwfOrder(up);
+    }
+
+    private List<LwfOrder> memberOrders(Long memberId)
+    {
+        LwfOrder q = new LwfOrder();
+        q.setMemberId(memberId);
+        return orderService.selectLwfOrderList(q);
+    }
+
+    private BigDecimal lockedRefundAmount(Long memberId, Long rechargeOrderId)
+    {
+        return memberOrders(memberId).stream()
+                .filter(o -> "balance_refund".equals(o.getKind()))
+                .filter(o -> rechargeOrderId != null && rechargeOrderId.equals(o.getRefId()))
+                .filter(o -> "refund_apply".equals(o.getStatus()) || "refund".equals(o.getStatus()))
+                .map(o -> money(o.getPayAmount()))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    private BigDecimal refundablePrincipal(LwfOrder rechargeOrder)
+    {
+        return money(rechargeOrder == null ? null : rechargeOrder.getPayAmount());
+    }
+
+    private BigDecimal money(BigDecimal value)
+    {
+        return (value == null ? BigDecimal.ZERO : value).setScale(2, RoundingMode.DOWN);
+    }
+
+    private String refundPolicyText()
+    {
+        String policy = configService.selectConfigByKey("lwf.recharge.refundPolicy");
+        return StringUtils.isEmpty(policy) ? "储值退款规则：仅退剩余可退实付本金，赠送金额、赠券、赠送权益不可提现。" : policy;
+    }
+
+    private String appendRemark(String oldRemark, String line)
+    {
+        if (StringUtils.isEmpty(line))
+        {
+            return oldRemark;
+        }
+        return StringUtils.isEmpty(oldRemark) ? line : oldRemark + "\n" + line;
     }
 
     /** 回退一笔已结算订单：券还原为待用、积分回退（加回抵扣、扣回消费，下限 0） */
