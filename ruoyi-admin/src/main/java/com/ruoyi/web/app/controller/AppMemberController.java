@@ -97,6 +97,15 @@ public class AppMemberController extends BaseController
         return toAjax(memberService.updateLwfMember(up));
     }
 
+    @PostMapping("/phone")
+    public AjaxResult bindPhone(@RequestBody Map<String, String> body)
+    {
+        LwfMember member = appBizService.bindWxPhone(AppUserContext.getMemberId(), body.get("code"));
+        AjaxResult ajax = success();
+        ajax.put("member", member);
+        return ajax;
+    }
+
     /** 上传头像：保存文件并把可访问 URL 写回会员，返回 url */
     @PostMapping("/avatar")
     public AjaxResult avatar(@RequestParam("file") MultipartFile file) throws Exception

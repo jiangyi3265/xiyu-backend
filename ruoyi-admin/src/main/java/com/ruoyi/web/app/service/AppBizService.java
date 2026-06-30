@@ -43,6 +43,9 @@ import com.ruoyi.web.app.domain.AppOrderReq;
 @Service
 public class AppBizService
 {
+    private volatile String wxAccessToken;
+    private volatile long wxAccessTokenExpireAt;
+
     @Autowired
     private ILwfMemberService memberService;
     @Autowired
@@ -167,6 +170,102 @@ public class AppBizService
         int q2 = json.indexOf('"', q1 + 1);
         if (q1 < 0 || q2 < 0) return null;
         return json.substring(q1 + 1, q2);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public LwfMember bindWxPhone(Long memberId, String code)
+    {
+        if (StringUtils.isEmpty(code))
+        {
+            throw new ServiceException("缺少微信手机号授权 code");
+        }
+        if (StringUtils.isEmpty(wxAppid) || StringUtils.isEmpty(wxSecret))
+        {
+            throw new ServiceException("微信小程序未配置，无法获取手机号");
+        }
+
+        String accessToken = getWxAccessToken();
+        String url = "https://api.weixin.qq.com/wxa/business/getuserphonenumber?access_token=" + accessToken;
+        String resp = HttpUtils.sendPost(url, "{\"code\":\"" + jsonEscape(code) + "\"}", "application/json;charset=UTF-8");
+        String phone = extractJson(resp, "phoneNumber");
+        if (StringUtils.isEmpty(phone))
+        {
+            String errmsg = extractJson(resp, "errmsg");
+            throw new ServiceException(StringUtils.isNotEmpty(errmsg) ? ("获取微信手机号失败：" + errmsg) : "获取微信手机号失败");
+        }
+
+        LwfMember exists = memberService.selectLwfMemberByPhone(phone);
+        if (exists != null && !memberId.equals(exists.getMemberId()))
+        {
+            throw new ServiceException("该手机号已绑定其他账号");
+        }
+
+        LwfMember up = new LwfMember();
+        up.setMemberId(memberId);
+        up.setPhone(phone);
+        memberService.updateLwfMember(up);
+        return memberService.selectLwfMemberByMemberId(memberId);
+    }
+
+    private synchronized String getWxAccessToken()
+    {
+        long now = System.currentTimeMillis();
+        if (StringUtils.isNotEmpty(wxAccessToken) && now < wxAccessTokenExpireAt)
+        {
+            return wxAccessToken;
+        }
+        try
+        {
+            String url = "https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid="
+                    + URLEncoder.encode(wxAppid, "UTF-8") + "&secret=" + URLEncoder.encode(wxSecret, "UTF-8");
+            String resp = HttpUtils.sendGet(url);
+            String token = extractJson(resp, "access_token");
+            if (StringUtils.isEmpty(token))
+            {
+                String errmsg = extractJson(resp, "errmsg");
+                throw new ServiceException(StringUtils.isNotEmpty(errmsg) ? ("获取微信 access_token 失败：" + errmsg) : "获取微信 access_token 失败");
+            }
+            String expiresIn = extractNumber(resp, "expires_in");
+            long ttl = 7000L;
+            try
+            {
+                ttl = Long.parseLong(expiresIn);
+            }
+            catch (Exception ignored)
+            {
+            }
+            wxAccessToken = token;
+            wxAccessTokenExpireAt = now + Math.max(60L, ttl - 300L) * 1000L;
+            return wxAccessToken;
+        }
+        catch (ServiceException e)
+        {
+            throw e;
+        }
+        catch (Exception e)
+        {
+            throw new ServiceException("获取微信 access_token 失败，请稍后重试");
+        }
+    }
+
+    private String jsonEscape(String s)
+    {
+        return s == null ? "" : s.replace("\\", "\\\\").replace("\"", "\\\"");
+    }
+
+    private String extractNumber(String json, String key)
+    {
+        if (json == null) return null;
+        String flag = "\"" + key + "\"";
+        int i = json.indexOf(flag);
+        if (i < 0) return null;
+        int c = json.indexOf(':', i);
+        if (c < 0) return null;
+        int start = c + 1;
+        while (start < json.length() && Character.isWhitespace(json.charAt(start))) start++;
+        int end = start;
+        while (end < json.length() && Character.isDigit(json.charAt(end))) end++;
+        return end > start ? json.substring(start, end) : null;
     }
 
     /** 注册：送500积分注册礼 */
